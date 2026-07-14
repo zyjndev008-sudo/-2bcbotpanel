@@ -143,11 +143,22 @@ app.post('/api/bots', (req, res) => {
   fs.mkdirSync(botFolder, { recursive: true });
 
   const mainTemplate = `import json
+import sys
 import discord
 from discord.ext import commands
 
-with open('config.json', 'r', encoding='utf-8') as config_file:
-    config = json.load(config_file)
+config_path = 'config.json'
+
+try:
+    with open(config_path, 'r', encoding='utf-8') as config_file:
+        config = json.load(config_file)
+except FileNotFoundError:
+    print(f'Missing {config_path}')
+    sys.exit(1)
+
+if 'token' not in config or not config['token']:
+    print('Bot token is required in config.json')
+    sys.exit(1)
 
 bot = commands.Bot(command_prefix='!', intents=discord.Intents.default())
 
@@ -250,6 +261,21 @@ app.post('/api/bots/:id/package', (req, res) => {
     fs.writeFileSync(requirementsPath, current.join('\n') + '\n', 'utf8');
   }
   res.json({ packages: current });
+});
+
+app.post('/api/bots/:id/token', (req, res) => {
+  const { id } = req.params;
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+  const dir = botDir(id);
+  const configPath = path.join(dir, 'config.json');
+  if (!fs.existsSync(dir)) {
+    return res.status(404).json({ error: 'Bot not found' });
+  }
+  fs.writeFileSync(configPath, JSON.stringify({ token }, null, 2), 'utf8');
+  res.json({ success: true });
 });
 
 app.get('/api/bots/:id/packages', (req, res) => {

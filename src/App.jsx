@@ -16,6 +16,7 @@ function App() {
   const [content, setContent] = useState('');
   const [packages, setPackages] = useState([]);
   const [newPackage, setNewPackage] = useState('');
+  const [selectedBotToken, setSelectedBotToken] = useState('');
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState('');
 
@@ -45,14 +46,17 @@ function App() {
       setName('');
       setToken('');
       await loadBots();
-      setSelectedBot(data.bot);
+      await selectBot(data.bot);
     } catch (err) {
       setError(err.message);
     }
   };
 
   const selectBot = async (bot) => {
+    if (!bot) return;
+    setError('');
     setSelectedBot(bot);
+    setSelectedBotToken('');
     setActivePath('');
     setContent('');
     setPackages([]);
@@ -86,6 +90,18 @@ function App() {
     try {
       await api(`/api/bots/${selectedBot.id}/file`, { method: 'POST', body: JSON.stringify({ path: activePath, content }) });
       await loadFiles(selectedBot.id);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const updateTokenForSelectedBot = async () => {
+    if (!selectedBot || !selectedBotToken.trim()) return;
+    try {
+      await api(`/api/bots/${selectedBot.id}/token`, { method: 'POST', body: JSON.stringify({ token: selectedBotToken.trim() }) });
+      setSelectedBotToken('');
+      setError('');
+      await loadLogs(selectedBot.id);
     } catch (err) {
       setError(err.message);
     }
@@ -137,8 +153,8 @@ function App() {
           <div>@2bc</div>
           <div>Bot Panel</div>
         </div>
-        <section className="panel">
-          <h2>Add bot</h2>
+        <section className="panel panel-card">
+          <h2>Create bot</h2>
           <label>
             Name
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Bot name" />
@@ -147,10 +163,28 @@ function App() {
             Token
             <input value={token} onChange={(e) => setToken(e.target.value)} placeholder="Bot token" />
           </label>
-          <button onClick={createBot}>Create bot</button>
+          <button className="primary" onClick={createBot}>Create bot</button>
         </section>
-        <section className="panel">
-          <h2>Bots</h2>
+        <section className="panel panel-card">
+          <h2>Bot files</h2>
+          {selectedBot ? (
+            files.length > 0 ? (
+              <div className="file-list">
+                {files.map((file) => (
+                  <button key={file.path} className={activePath === file.path ? 'active' : ''} onClick={() => loadFile(selectedBot.id, file.path)}>
+                    {file.path}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-panel">Open a bot to load its files.</div>
+            )
+          ) : (
+            <div className="empty-panel">Select a bot to view files.</div>
+          )}
+        </section>
+        <section className="panel panel-card">
+          <h2>Bot list</h2>
           <div className="bot-list">
             {bots.map((bot) => (
               <button key={bot.id} className={selectedBot?.id === bot.id ? 'active' : ''} onClick={() => selectBot(bot)}>
@@ -169,61 +203,58 @@ function App() {
             <p>Select a bot to manage it, or create one on the left.</p>
           </div>
         ) : (
-          <div className="bot-dashboard">
-            <header className="bot-header">
+          <>
+            <section className="workspace-top">
               <div>
                 <h1>{selectedBot.name}</h1>
                 <p>Status: {selectedBot.status}</p>
               </div>
-              <div className="button-group">
-                <button onClick={() => action(selectedBot.id, 'start')}>Start</button>
+              <div className="bot-actions">
+                <button className="primary" onClick={() => action(selectedBot.id, 'start')}>Start</button>
                 <button onClick={() => action(selectedBot.id, 'restart')}>Restart</button>
-                <button onClick={() => action(selectedBot.id, 'kill')}>Kill</button>
+                <button className="danger" onClick={() => action(selectedBot.id, 'kill')}>Kill</button>
               </div>
-            </header>
-
-            <div className="grid-two">
-              <section className="panel">
-                <h2>Files</h2>
-                <div className="file-list">
-                  {files.map((file) => (
-                    <button key={file.path} onClick={() => loadFile(selectedBot.id, file.path)} className={activePath === file.path ? 'active' : ''}>
-                      {file.path}
-                    </button>
-                  ))}
+            </section>
+            <div className="dashboard-grid">
+              <section className="panel editor-panel">
+                <div className="editor-header">
+                  <h2>{activePath || 'Select a file'}</h2>
+                  <button onClick={saveFile} disabled={!activePath}>Save file</button>
                 </div>
+                <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Open a file to edit" />
               </section>
-              <section className="panel">
-                <h2>Packages</h2>
-                <div className="package-list">
-                  {packages.map((pkg) => (
-                    <div key={pkg} className="package-item">{pkg}</div>
-                  ))}
+              <section className="panel right-panel">
+                <div className="card-section">
+                  <h2>Token</h2>
+                  <label>
+                    Bot token
+                    <input value={selectedBotToken} onChange={(e) => setSelectedBotToken(e.target.value)} placeholder="Update token" />
+                  </label>
+                  <button className="primary" onClick={updateTokenForSelectedBot} disabled={!selectedBotToken.trim()}>Update token</button>
                 </div>
-                <div className="package-add">
-                  <input value={newPackage} onChange={(e) => setNewPackage(e.target.value)} placeholder="discord.py" />
-                  <button onClick={addPackage}>Add</button>
+                <div className="card-section">
+                  <h2>Packages</h2>
+                  <div className="package-list">
+                    {packages.map((pkg) => (
+                      <div key={pkg} className="package-item">{pkg}</div>
+                    ))}
+                  </div>
+                  <div className="package-add">
+                    <input value={newPackage} onChange={(e) => setNewPackage(e.target.value)} placeholder="discord.py" />
+                    <button onClick={addPackage} disabled={!newPackage.trim()}>Add</button>
+                  </div>
                 </div>
               </section>
             </div>
-
-            <section className="panel file-editor">
-              <div className="editor-header">
-                <h2>{activePath || 'Select a file'}</h2>
-                <button onClick={saveFile} disabled={!activePath}>Save file</button>
-              </div>
-              <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Open a file to edit" />
-            </section>
-
             <section className="panel logs-panel">
-              <h2>Logs</h2>
+              <h2>Console</h2>
               <div className="logs">
                 {logs.slice().reverse().map((line, index) => (
                   <div key={index} className="log-line">{line}</div>
                 ))}
               </div>
             </section>
-          </div>
+          </>
         )}
       </main>
     </div>
