@@ -1,0 +1,22 @@
+{
+  "name": "@2bc-bot-panel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "@2bc Bot Panel - React dashboard and Express API for managing Python Discord bots.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "vite": "^5.4.0"
+  }
+}

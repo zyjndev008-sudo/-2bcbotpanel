@@ -1,0 +1,7 @@
+node_modules/
+.env
+dist/
+bots/
+bots.json
+__pycache__/
+.venv/
