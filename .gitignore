@@ -3,5 +3,7 @@ node_modules/
 dist/
 bots/
 bots.json
+bot.py
+data.json
 __pycache__/
 .venv/
